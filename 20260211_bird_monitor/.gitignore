@@ -1,0 +1,28 @@
+# 画像ファイル、動画ファイルはアップしない
+*.jpg
+*.gif
+*.png
+*.bmp
+*.mp4
+
+# パスワードとかを入れておく環境ファイル、公開、ダメ、絶対！！
+.env
+
+# --- Python in Home Server ---
+# 仮想環境はアップ不要
+venv/
+__pycache__/
+
+# --- C/C++ & Raspberry Pi Pico ---
+# コンパイルで生成される実行ファイルや中間オブジェクト
+*.o
+*.obj
+*.elf
+*.uf2
+*.bin
+
+# ビルドディレクトリ（CMakeなどを使う場合に生成）
+build/
+
+# VS Codeの設定（個人の環境依存のもの）
+.vscode/
