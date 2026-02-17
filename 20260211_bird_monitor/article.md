@@ -26,6 +26,25 @@ To begin this journey, I decided to repurpose my home security camera into an RT
 
 ## Step 1: The Gateway - Repurposing a security camera into an RTSP server
 
+Connecting my Hiseeu W-NVR (K8216-W6) was not a walk in the park; it felt more like a desperate battle.
+
+Initially, I fell into a deep trap. I tried to assign static IP addresses to each camera to "organize" the network, but this was a fatal mistake. The dedicated vendor app stopped responding, and for a moment, I felt a wave of absolute despair—as if I had destroyed my only eyes on the world before even starting. I was paralyzed by the fear that I had lost everything at the very first step.
+
+After a long struggle with cold sweat, I found a breakthrough. In my desperation, I turned to my AI collaborator, Gemini (whom I call "Gem-san"). I reached out to her as if grasping at a straw, and she showed me the truth I had overlooked: "Don't touch the individual camera settings. The NVR itself is the only gateway you need."
+
+This advice was my lifeline. It taught me something profound: AI isn't here to replace us or steal our roles; it’s here to support us when we are pushed to our limits. By embracing this collaboration, I was able to turn a moment of absolute despair into a step toward growth.
+
+![Figure 1a: Image screenshot of "System SetUp"](./images/606.jpg)
+![Figure 1b: Image screenshot of turning on RTSP server function in "Network SetUp"](./images/608.jpg)
+
+The reality was that the NVR acts as a central hub, and I only needed its single IP address to access all cameras. Even then, the official configuration screen was riddled with misleading information—missing colons and incorrect symbols. It was only through trial and error that I finally reached the correct URL format:
+
+rtsp://[user_ID]:[password]@[NVR_IP]:80/ch[Camera_Number]_[Main0_or_Sub1].264
+
+Note that the port is 80, not the standard 554. When the video stream finally played in VLC media player, it wasn't just a technical success; I felt like I'd regained my footing in a world I thought had been usurped by muscle-bound tech giants.
+
+![Figure 2: The first stream image in the vlc madia player](./images/vlc_player_first_stream.bmp)
+
 ## Step 2: Audience with the "BotFather" - Initializing the Telegram API
 
 ## Step 3: The watchful eye - Building an AI bird watcher with YOLO & OpenCV
