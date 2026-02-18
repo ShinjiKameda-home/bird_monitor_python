@@ -47,6 +47,14 @@ Note that the port is 80, not the standard 554. When the video stream finally pl
 
 ## Step 2: Audience with the "BotFather" - Initializing the Telegram API
 
+Installing the Telegram on my phone.
+Searching the "BotFather", **"@BotFather"** with blue-back check mark (official)
+Calling **"/newbot"** , naming the bot and being given the token.
+Searching the **Username of the bot**, and starting talking.
+
+Installing the package python-telegram-bot into my HomeServer.
+
+
 ## Step 3: The watchful eye - Building an AI bird watcher with YOLO & OpenCV
 
 ## Results: Tidings from the messengers - Real-time notifications in action

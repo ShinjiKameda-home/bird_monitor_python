@@ -10,7 +10,7 @@
 
 # --- Python in Home Server ---
 # 仮想環境はアップ不要
-venv/
+.venv/
 __pycache__/
 
 # --- C/C++ & Raspberry Pi Pico ---
