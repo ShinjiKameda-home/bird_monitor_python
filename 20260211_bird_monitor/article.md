@@ -51,15 +51,28 @@ Note that the port is 80, not the standard 554. When the video stream finally pl
 
 ## Step 2: Audience with the "BotFather" - Initializing the Telegram API
 
-Installing the Telegram on my phone.
-Searching the "BotFather", **"@BotFather"** with blue-back check mark (official)
-Calling **"/newbot"** , naming the bot and being given the token.
-Searching the **Username of the bot**, and starting talking.
-Waiting several minutes.
+With the first spark of rebellion ignited against the tech giants, it was time to establish a reliable line of communication. My choice was Telegram—a platform renowned for its robust and developer-friendly API. Deep within this network resides the "BotFather," the sovereign entity who oversees the creation of all bots. To give my system a voice, I had to seek an audience with him.
 
-Installing the package python-telegram-bot into my HomeServer.
-Making dotenv file, token and chatID will be hidden in this file.
+The journey began by installing Telegram and seeking out the official @BotFather account, identifiable by the blue verification badge. With a single command, /newbot, the ritual commenced.
 
+After I provided a display name and a unique username, he granted me a long, cryptic string of characters: the HTTP API Token. This is more than just text; it is the master key that breathes life into my code and bridges the gap between my HomeServer and the palm of my hand.
+
+![Figure 3a: The first chat with the BotFather 01](./images/Chat_with_BotFather01.bmp)
+![Figure 3b: The first chat with the BotFather 02](./images/Chat_with_BotFather02.bmp)
+
+Next, I located my newly created bot's username and initiated the first contact by tapping "Start." At this stage, the bot remained silent, but the handshake was complete.
+
+Back on the HomeServer, I prepared the environment by installing the python-telegram-bot library. I integrated the token into a test script and, with a deep breath, executed the command:
+
+***python test_bot.py***
+
+A few seconds of silence followed. Then, a familiar "ding" echoed from my pocket.
+"Shinji, can you hear me?"
+That brief message had traveled from my server, through the vast expanse of the Telegram API, and directly to my device.
+
+![Figure 4: The first message from the new Bot](./images/Chat_with_New_Bot.bmp)
+
+Connection established. I now have a way for the garden to speak to me.
 
 ## Step 3: The watchful eye - Building an AI bird watcher with YOLO & OpenCV
 
