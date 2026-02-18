@@ -14,7 +14,7 @@ I found one answer in the sea. As an islander, I love seaweed—nori, kombu, wak
 
 But the real mystery remained: **Who supplies the phosphorus?**
 
-This led me down a rabbit hole into the tragic history of Nauru (known as "Naoero" in the native language) and its phosphate mines. It’s a a solemn reminder of how resource development that is meant to bring prosperity to a nation can also lead to its downfall. In Japan, we often aren't taught these inconvenient truths in school, leading to a society where people lean on academic credentials as a survival strategy, often neglecting raw, hands-on awareness. But I'd like to say: "Ignorance is not a crime, but it is a disadvantage."
+This led me down a rabbit hole into the tragic history of Nauru (known as "Naoero" in the native language) and its phosphate mines. It’s a a solemn reminder of how resource development that is meant to bring prosperity to a nation can also lead to its downfall. In Japan, we often aren't taught these inconvenient truths in school, leading to a society where people lean on academic credentials as a survival strategy, often neglecting raw, hands-on awareness. But I'd like to say: "Ignorance is not a crime itself, but it often brings a disadvantage."
 
 Then, it occurred to me: the precious "Gem" phosphorus, once obtained from the droppings of migratory birds like albatrosses, has now run out on Nauru, while it remains in excess within Japanese farmlands. The reason? Many farmers depend on imported commercial fertilizers year after year. Furthermore, the small birds that come to my garden every morning are collecting these nutrients from the surrounding mountains and fields.
 
@@ -37,7 +37,7 @@ This advice was my lifeline. It taught me something profound: AI isn't here to r
 ![Figure 1a: Image screenshot of "System SetUp"](./images/606.jpg)
 ![Figure 1b: Image screenshot of turning on RTSP server function in "Network SetUp"](./images/608.jpg)
 
-The reality was that the NVR acts as a central hub, and I only needed its single IP address to access all cameras. Even then, the official configuration screen was riddled with misleading information—missing colons and incorrect symbols. It was only through trial and error that I finally reached the correct URL format:
+The reality was that the NVR acts as a central hub, and I only needed its single IP address to access all cameras. Even then, the official configuration screen was riddled with misleading information—missing colons and incorrect symbols. It was (not taught in school, ) only through trial and error that I finally reached the correct URL format:
 
 rtsp://[user_ID]:[password]@[NVR_IP]:80/ch[Camera_Number]_[Main0_or_Sub1].264
 
