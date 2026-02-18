@@ -39,8 +39,12 @@ This advice was my lifeline. It taught me something profound: AI isn't here to r
 
 The reality was that the NVR acts as a central hub, and I only needed its single IP address to access all cameras. Even then, the official configuration screen was riddled with misleading information—missing colons and incorrect symbols. It was (not taught in school, ) only through trial and error that I finally reached the correct URL format:
 
-rtsp://[user_ID]:[password]@[NVR_IP]:80/ch[Camera_Number]_[Main0_or_Sub1].264
+rtsp://[User_ID]:[Password]@[NVR_IP]:80/ch[Camera_Number]_[Main0_or_Sub1].264
 
+"User_ID" is "admin" in many cases.
+"NVR_IP" is often "192.168.0.000" (The last "000" is a static number you defined.)
+"Camera_Number" is started not with 1 but with 0 ("CAM1" was 0 here.)
+"Main0_or_Sub1" sets resolution, 0 is high but slow, 1 is low but fast.
 Note that the port is 80, not the standard 554. When the video stream finally played in VLC media player, it wasn't just a technical success; I felt like I'd regained my footing in a world I thought had been usurped by muscle-bound tech giants.
 
 ![Figure 2: The first stream image in the vlc madia player](./images/vlc_player_first_stream.bmp)
@@ -51,8 +55,10 @@ Installing the Telegram on my phone.
 Searching the "BotFather", **"@BotFather"** with blue-back check mark (official)
 Calling **"/newbot"** , naming the bot and being given the token.
 Searching the **Username of the bot**, and starting talking.
+Waiting several minutes.
 
 Installing the package python-telegram-bot into my HomeServer.
+Making dotenv file, token and chatID will be hidden in this file.
 
 
 ## Step 3: The watchful eye - Building an AI bird watcher with YOLO & OpenCV
