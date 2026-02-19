@@ -1,4 +1,4 @@
-# Bird Monitor // タイトルは最後まで保留
+# Smart Bird Watching with RTSP, AI (YOLOv8) and Telegram Bot
 
 ## Motivation: Closing the Loop with Avian Allies
 
