@@ -62,16 +62,53 @@ def main():
         send_telegram_text(start_photo_msg)
         print(start_photo_msg)
     
-    # Main monitoring loop: Analyze frames at ~2s intervals
+    # Main monitoring loop: Analyze frames at ~3s intervals
     detected_previously = False
     while cap.isOpened():
         # Skip ~1s of frames to stay current with the live stream
         for _ in range(30):
             cap.grab()
             
-        # Decode the latest frame
-        ret, frame = cap.retrieve() # 最新のフレームのみデコードして画像構築
-        if not ret: break
+        # Decode the latest frame before revision
+        # ret, frame = cap.retrieve()
+        # if not ret: break
+
+        # Happy Path: Decode the latest frame
+        ret, frame = cap.retrieve()
+
+        if not ret:
+            # Error Path: Implemented retry logic (10s interval) 
+            # The wireless signal from a camera can be interfered with by microwave ovens.
+            retry_count = 0
+            max_retries = 30  # 10 x 30 = 300 [sec.] -> 5 [min.]        
+            while retry_count < max_retries:
+                retry_count += 1
+                error_msg = f"Frame retrieval failed. Retrying... ({retry_count}/{max_retries})"
+                print(error_msg)
+            
+                if retry_count == 1:
+                    send_telegram_text("Signal disturbance detected. Initiating recovery...")
+            
+                cap.release()
+                time.sleep(1) # Wait a second
+                cap.open(RTSP_URL)
+                time.sleep(9)  # Count to 10
+
+                # Grab a few times to refresh buffer
+                for _ in range(5):
+                    cap.grab()
+                
+                ret, frame = cap.retrieve()
+                if ret:
+                    # Restored successfully
+                    send_telegram_text(f"Connection restored after {retry_count} attempts.")
+                    break # Back to Happy Path
+        
+        if not ret:
+            # Give up and let systemd handle it
+            send_telegram_text("Retries exhausted. Handing over to systemd.")
+            print("Max retries reached. Exiting for systemd to take over.")
+            break # Exit main loop to trigger systemd restart
 
         # 1. Run inference with a broad confidence threshold (0.2)
         # Targets: Person(0), Bird(14), Cat(15), Dog(16)
@@ -80,7 +117,7 @@ def main():
         
         # 2. Filter detections based on class-specific thresholds
         found_labels = set()
-        thresholds = {0: 0.5, 14: 0.25, 15: 0.3, 16: 0.3}
+        thresholds = {0: 0.6, 14: 0.3, 15: 0.4, 16: 0.4}
         names = {0: "Person", 14: "Bird", 15: "Cat", 16: "Dog"}
 
         for box in boxes:
@@ -111,7 +148,7 @@ def main():
             # Reset detection flag when targets leave the frame
             detected_previously = False
         
-        time.sleep(1)
+        time.sleep(2)
 
     cap.release()
 

@@ -5,7 +5,7 @@ A Python-based project that repurposes a home security camera into an RTSP serve
 ## Project Details
 Detailed project logs, including photos and videos, are available on Hackster.io:
 
-[Please read the full article on Hackster.io](https://www.hackster.io/shinji_kameda/****)
+[Please read the full article on Hackster.io](https://www.hackster.io/shinji_kameda/smart-bird-watching-with-rtsp-ai-yolov8-and-telegram-bot-a64713?utm_campaign=published_project&utm_medium=email&utm_source=hackster)
 
 ## Features
 - RTSP stream processing from home security cameras.

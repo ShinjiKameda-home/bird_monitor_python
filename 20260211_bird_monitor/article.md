@@ -81,7 +81,7 @@ The soul of this project lies in its ability to see. I began crafting bird_watch
 
 The system pulls live video streams from my security camera's base station (now functioning as an RTSP server) and feeds them into the YOLOv8 model for real-time object detection. To ensure the system was robust during testing, I configured it to recognize not just birds, but also humans and dogs. I implemented a class-specific threshold system, allowing me to fine-tune the confidence levels for each target independently.
 
-You can find the full source code here: [Link to GitHub]
+You can find the full source code here: [Link to GitHub](https://github.com/ShinjiKameda-home/bird_monitor_python.git)
 
 With the code deployed, all that was left was to wait for our feathered messengers to arrive. But before that, I decided to perform a quick "field test" with my loyal companion, "Toto".
 
@@ -102,7 +102,8 @@ For a moment, I was baffled. But as I looked at the capture, it all made sense. 
 ![Figure6b: The first "Toto" captured in my garden ](./images/The_first_Toto.bmp)
 
 I'll need to tweak the confidence threshold and also want to set an ROI that only covers the area around the bird feeder or the bird bath, but that's something I'll tackle another time. That's all for now.
-Thank you for reading this article, I hope you enjoyed it! If you know of any other better ways to tune AI models, please feel free to let me know in the comments!
+
+Thank you for reading this article, I hope you enjoyed it. If you know of any other better ways to tune AI models or so, please feel free to let me know in the comments. Thank you so much!
 
 ## Acknowledgments
  Special thanks to "Gem"-san, my insightful AI collaborator, for helping me structure these thoughts and translating my vision into English.
