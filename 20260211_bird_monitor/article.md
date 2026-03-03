@@ -105,5 +105,14 @@ I'll need to tweak the confidence threshold and also want to set an ROI that onl
 
 Thank you for reading this article, I hope you enjoyed it. If you know of any other better ways to tune AI models or so, please feel free to let me know in the comments. Thank you so much!
 
+## Update: Battling the "Kitchen Interference" and the Aesthetics of Resilience
+Just as I was about to start fine-tuning the AI, the system suddenly went down. The cause? Not a sophisticated cyberattack, but a humble kitchen microwave. In the world of home security cameras, 2.4GHz Wi-Fi interference is an unavoidable fact of life, and off- course RTSP streams are no exception.
+
+Instead of relying on external watchdogs like systemd, I decided to bake the recovery logic directly into the code. My core philosophy here was to maintain the beauty of the "Happy Path." I carefully separated the normal execution flow from the exception handling, ensuring that the main logic remains clean and free of cluttered if branches. 
+
+'''code'''
+
+By isolating the reconnection strategy into a dedicated resilient loop, the code stays elegant while gaining the strength to recover autonomously. Now, even if the signal wavers during a quick lunch break, the "watchful eye" finds its way back home without a single manual restart. It’s a small but significant victory of clean architecture over household physics.
+
 ## Acknowledgments
  Special thanks to "Gem"-san, my insightful AI collaborator, for helping me structure these thoughts and translating my vision into English.

@@ -1,9 +1,9 @@
-import cv2
-from ultralytics import YOLO
-import requests
+import cv2 # type: ignore
+from ultralytics import YOLO # type: ignore
+import requests # type: ignore
 import os
 import time
-from dotenv import load_dotenv
+from dotenv import load_dotenv # type: ignore
 
 # Load environment variables
 load_dotenv()
