@@ -11,6 +11,10 @@ TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 RTSP_URL = os.getenv("RTSP_URL")
 
+# Constants
+ROI_X1, ROI_Y1 = 768, 0
+ROI_X2, ROI_Y2 = 2010, 1247
+
 def send_telegram_text(text):
     """Sends a plain text message via Telegram Bot API."""
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -20,7 +24,7 @@ def send_telegram_text(text):
     }
     try:
         response = requests.post(url, data=payload)
-        # 実行結果をターミナルに出す
+        # Print results into the terminal
         if response.status_code == 200:
             print("Telegram notification sent successfully!")
         else:
@@ -52,8 +56,19 @@ def main():
     cap.grab()
     ret, frame = cap.retrieve()
     if ret:
+        preview_frame = frame.copy()
+        # Display the rectangular ROI
+        start_point = (ROI_X1, ROI_Y1)
+        end_point = (ROI_X2, ROI_Y2)
+        color = (255, 0, 0)  # BLUE (BGR)
+        thickness = 5
+        cv2.rectangle(preview_frame, start_point, end_point, color, thickness)
+        # Put a label
+        label_y = ROI_Y1 + 40 if ROI_Y1 < 50 else ROI_Y1 - 10
+        cv2.putText(preview_frame, "Monitoring ROI", (ROI_X1 + 10, label_y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.5, color, 3)
         start_photo = "start_photo.jpg"
-        cv2.imwrite(start_photo, frame)
+        cv2.imwrite(start_photo, preview_frame)
         start_photo_msg = "Testing Feed: Success to start monitoring."
         send_telegram_photo(start_photo, start_photo_msg)
         print(start_photo_msg)
@@ -112,7 +127,8 @@ def main():
 
         # 1. Run inference with a broad confidence threshold (0.2)
         # Targets: Person(0), Bird(14), Cat(15), Dog(16)
-        results = model.predict(frame, conf=0.2, classes=[0, 14, 15, 16], verbose=False)
+        roi_frame = frame[ROI_Y1:ROI_Y2, ROI_X1:ROI_X2]
+        results = model.predict(roi_frame, conf=0.2, classes=[0, 14, 15, 16], verbose=False)
         boxes = results[0].boxes
         
         # 2. Filter detections based on class-specific thresholds
