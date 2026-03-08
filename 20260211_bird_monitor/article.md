@@ -114,5 +114,33 @@ Instead of relying on external watchdogs like systemd, I decided to bake the rec
 
 By isolating the reconnection strategy into a dedicated resilient loop, the code stays elegant while gaining the strength to recover autonomously. Now, even if the signal wavers during a quick lunch break, the "watchful eye" finds its way back home without a single manual restart. It’s a small but significant victory of clean architecture over household physics.
 
+## Update 2: Geometric Precision and the "Toto Verification"
+After the first trial, I realized that catching a "phosphorus messenger" required more than just running a model; it required a deep understanding of the camera's perspective and the physical reality of the garden.
+
+### -1. The 1:1 ROI Strategy: Aligning with the AI's Vision
+In the initial setup, the AI was looking at the entire wide-angle stream. However, to capture the fine details of small birds, resolution is everything. I decided to crop a specific 1280x1280 square Region of Interest (ROI).
+
+Why 1280x1280? YOLOv8 typically operates on square inputs (defaulting to 640 or 1280). By providing a perfect 1:1 square crop from the source, I minimize image distortion caused by interpolation. Stretching a rectangular frame to fit a square model creates "squashed" features that confuse the AI.
+
+The Resolution Advantage: While this increases the memory footprint compared to a lower-res crop, the gain in clarity for small objects—like a sparrow’s silhouette—is undeniable. In the world of edge AI, source quality is the ultimate force multiplier for mAP (Mean Average Precision).
+
+### -2. Physical Validation: Area-Based Heuristic Filtering
+From my second-floor vantage point, the camera looks down at the garden. This perspective creates a unique geometric constraint: humans, dogs, and cats appear roughly within a certain pixel range, while birds are significantly smaller.
+
+To solve the "Is Toto a Human?" dilemma, I implemented a Bounding Box Area Filter. This acts as a secondary "sanity check" after the AI's inference:
+
+- Large Objects (Human/Dog/Cat): Must exceed a specific pixel threshold (e.g., 42,000 pixels). If the area is too small, it's likely just background noise or a distant shadow.
+
+- Small Objects (Birds): Must stay below a maximum threshold (e.g., 4,200 pixels). This prevents a passing cat from being misidentified as a giant, phosphorus-rich bird.
+
+### -3. The Result: Toto is Finally a "Dog"
+By combining this area filtering with a highly sensitive confidence threshold (conf=0.1 at the inference level, filtered to 0.4 for dogs or cats), I achieved a major milestone: Toto was finally recognized as a "Dog"!
+
+![Figure7: Yes, Toto is a dog!](./images/Screenshot_20260307-101955.png)
+
+***Figure7: Toto is a dog!***
+
+It might seem like a small win, but to me, it was a triumph of logic over ambiguity. The system no longer just "guesses"; it validates detections based on the physical laws of my garden's perspective. The "phosphorus messenger" detection system is now stable, resilient, and scientifically grounded.
+
 ## Acknowledgments
  Special thanks to "Gem"-san, my insightful AI collaborator, for helping me structure these thoughts and translating my vision into English.
