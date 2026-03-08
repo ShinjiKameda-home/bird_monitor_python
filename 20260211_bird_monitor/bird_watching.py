@@ -1,4 +1,5 @@
 import cv2 # type: ignore
+import numpy as np
 from ultralytics import YOLO # type: ignore
 import requests # type: ignore
 import os
@@ -9,12 +10,20 @@ from dotenv import load_dotenv # type: ignore
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-RTSP_URL = os.getenv("RTSP_URL")
+RTSP_URL = os.getenv("RTSP_URL") or ""
 
 # Constants
 ROI_X1, ROI_Y1 = 768, 0
-ROI_X2, ROI_Y2 = 2010, 1247
+ROI_X2, ROI_Y2 = 2048, 1280
+MIN_SIZE_LARGE_OBJ = 42000  # Persons, Dogs or Cats are large
+MAX_SIZE_SMALL_BIRD = 4200 # Birds are small
+DIFF_THRESHOLD = 25  # Sensitivity, smaller is more sensitive
+MOTION_LOWER_LIMIT = 100000 # Minimum pixel sum to trigger inference
+MOTION_UPPER_FACTOR = 0.8 # Max thresh to ignore Day/Night switching
+FRAME_SKIP = 30 # Number of frames to grab/skip
+LOOP_INTERVAL = 3 # Short sleep to prevent CPU hogging in the main loop
 
+# Methods
 def send_telegram_text(text):
     """Sends a plain text message via Telegram Bot API."""
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -44,6 +53,10 @@ def send_telegram_photo(photo_path, caption):
             print(f"Notification Error: {e}")
 
 def main():
+    # Inistialize before the loop
+    prev_roi_gray = None
+    detected_previously = False
+
     model = YOLO("yolov8n.pt")
     cap = cv2.VideoCapture(RTSP_URL)
 
@@ -76,12 +89,14 @@ def main():
         start_photo_msg = "Failed to start monitoring, image couldn't be captured."
         send_telegram_text(start_photo_msg)
         print(start_photo_msg)
-    
+
     # Main monitoring loop: Analyze frames at ~3s intervals
-    detected_previously = False
     while cap.isOpened():
+        found_labels = set()
+        boxes = None
+
         # Skip ~1s of frames to stay current with the live stream
-        for _ in range(30):
+        for _ in range(FRAME_SKIP):
             cap.grab()
             
         # Decode the latest frame before revision
@@ -123,26 +138,71 @@ def main():
             # Give up and let systemd handle it
             send_telegram_text("Retries exhausted. Handing over to systemd.")
             print("Max retries reached. Exiting for systemd to take over.")
-            break # Exit main loop to trigger systemd restart
+            time.sleep(30)
+            continue # Exit main loop to trigger systemd restart
+
+        # 0. Trim the ROI
+        roi_frame = frame[ROI_Y1:ROI_Y2, ROI_X1:ROI_X2]
+        current_roi_gray = cv2.cvtColor(roi_frame, cv2.COLOR_BGR2GRAY)
+        current_roi_gray = cv2.GaussianBlur(current_roi_gray, (21, 21), 0)
+
+        motion_detected = False
+        if prev_roi_gray is not None:
+            # Calculate difference from the previous frame
+            frame_diff = cv2.absdiff(prev_roi_gray, current_roi_gray)
+            _, thresh = cv2.threshold(frame_diff, DIFF_THRESHOLD, 255, cv2.THRESH_BINARY)
+            
+            # If there's any significant movement, set the flag
+            diff_sum = np.sum(thresh)
+            max_possible_diff = (ROI_X2 - ROI_X1) * (ROI_Y2 - ROI_Y1) * 255
+            if MOTION_LOWER_LIMIT < diff_sum < (max_possible_diff * MOTION_UPPER_FACTOR):
+                motion_detected = True
+        
+        # Update for the next loop
+        prev_roi_gray = current_roi_gray.copy()
 
         # 1. Run inference with a broad confidence threshold (0.2)
         # Targets: Person(0), Bird(14), Cat(15), Dog(16)
-        roi_frame = frame[ROI_Y1:ROI_Y2, ROI_X1:ROI_X2]
-        results = model.predict(roi_frame, conf=0.2, classes=[0, 14, 15, 16], verbose=False)
-        boxes = results[0].boxes
+        if motion_detected:
+            results = model.predict(roi_frame, conf=0.1, imgsz = 1280, 
+                                classes=[0, 14, 15, 16], verbose=False)
+            boxes = results[0].boxes
         
-        # 2. Filter detections based on class-specific thresholds
-        found_labels = set()
-        thresholds = {0: 0.6, 14: 0.3, 15: 0.4, 16: 0.4}
-        names = {0: "Person", 14: "Bird", 15: "Cat", 16: "Dog"}
+            # 2. Filter detections based on class-specific thresholds
+            thresholds = {0: 0.6, 14: 0.2, 15: 0.4, 16: 0.4}
+            names = {0: "Person", 14: "Bird", 15: "Cat", 16: "Dog"}
 
-        for box in boxes:
-            cls_id = int(box.cls[0])
-            conf = float(box.conf[0])
-            
-            target_threshold = thresholds.get(cls_id, 0.5)
-            if conf >= target_threshold:
-                found_labels.add(names.get(cls_id, "Unknown"))
+            if boxes is not None:
+                for box in boxes:
+                    cls_id = int(box.cls[0])
+                    conf = float(box.conf[0])
+                    coords = box.xyxy[0].tolist()     # float coordinates
+                    b_x1, b_y1, b_x2, b_y2 = map(int, coords) # integer coordinates
+                    # Calculate bounding box area in pixels
+                    area = (b_x2 - b_x1) * (b_y2 - b_y1)
+                    # Convert coordinates from relative to global
+                    gx1, gy1 = b_x1 + ROI_X1, b_y1 + ROI_Y1
+                    gx2, gy2 = b_x2 + ROI_X1, b_y2 + ROI_Y1
+                    # Get specific threshold for this class, defaulting to 0.5
+                    target_threshold = thresholds.get(cls_id, 0.5)
+                    if conf < target_threshold:
+                        continue
+                    # Map class ID to label name, with "Unknown" as a safety fallback
+                    label_name = names.get(cls_id, "Unknown")
+                    # -1. Filter out undersized 'Large' objects (e.g., wind-blown pots) ---
+                    if label_name in ["Person", "Dog", "Cat"]:
+                        if area < MIN_SIZE_LARGE_OBJ:
+                        # Ignore small detections that are likely noise
+                            continue
+                    # -2. Filter out oversized 'Small' objects (e.g., large crows or misidentified cats) ---
+                    if label_name == "Bird":
+                        if area > MAX_SIZE_SMALL_BIRD:
+                            # Only accept small-to-medium birds as "Bird"
+                            continue            
+                    # Draw bounding box
+                    cv2.rectangle(frame, (gx1, gy1), (gx2, gy2), (0, 0, 255), 3)
+                    # Register the validated label for Telegram notification
+                    found_labels.add(label_name)
 
         # 3. Handle notifications based on detection state changes
         has_valid_target = len(found_labels) > 0
@@ -164,7 +224,7 @@ def main():
             # Reset detection flag when targets leave the frame
             detected_previously = False
         
-        time.sleep(2)
+        time.sleep(max (0, LOOP_INTERVAL-1))
 
     cap.release()
 
