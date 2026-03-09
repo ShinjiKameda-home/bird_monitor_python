@@ -13,15 +13,15 @@ CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 RTSP_URL = os.getenv("RTSP_URL") or ""
 
 # Constants
-ROI_X1, ROI_Y1 = 768, 0
-ROI_X2, ROI_Y2 = 2048, 1280
-MIN_SIZE_LARGE_OBJ = 42000  # Persons, Dogs or Cats are large
-MAX_SIZE_SMALL_BIRD = 4200 # Birds are small
-DIFF_THRESHOLD = 25  # Sensitivity, smaller is more sensitive
-MOTION_LOWER_LIMIT = 100000 # Minimum pixel sum to trigger inference
-MOTION_UPPER_FACTOR = 0.8 # Max thresh to ignore Day/Night switching
-FRAME_SKIP = 30 # Number of frames to grab/skip
-LOOP_INTERVAL = 3 # Short sleep to prevent CPU hogging in the main loop
+ROI_X1, ROI_Y1 = 768, 0      # The top-left point of the monitoring ROI
+ROI_X2, ROI_Y2 = 2048, 1280  # The bottom-right point of the monitoring ROI
+MIN_SIZE_LARGE_OBJ = 42000   # Persons, Dogs or Cats are large
+MAX_SIZE_SMALL_BIRD = 4200   # Birds are small
+DIFF_THRESHOLD = 25          # Sensitivity, smaller is more sensitive
+MOTION_LOWER_LIMIT = 100000  # Minimum pixel sum to trigger inference
+MOTION_UPPER_FACTOR = 0.8    # Max thresh to ignore Day/Night switching
+FRAME_SKIP = 30              # Number of frames to grab/skip
+LOOP_INTERVAL = 3            # Short sleep to prevent CPU hogging in the main loop
 
 # Methods
 def send_telegram_text(text):
