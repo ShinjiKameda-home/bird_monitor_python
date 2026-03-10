@@ -16,12 +16,17 @@ RTSP_URL = os.getenv("RTSP_URL") or ""
 ROI_X1, ROI_Y1 = 768, 0      # The top-left point of the monitoring ROI
 ROI_X2, ROI_Y2 = 2048, 1280  # The bottom-right point of the monitoring ROI
 MIN_SIZE_LARGE_OBJ = 42000   # Persons, Dogs or Cats are large
-MAX_SIZE_SMALL_BIRD = 4200   # Birds are small
-DIFF_THRESHOLD = 25          # Sensitivity, smaller is more sensitive
-MOTION_LOWER_LIMIT = 100000  # Minimum pixel sum to trigger inference
+MAX_SIZE_SMALL_BIRD = 12800  # Birds are small
+DIFF_THRESHOLD = 30          # Sensitivity, smaller is more sensitive
+MOTION_LOWER_LIMIT = 25600   # Minimum pixel sum to trigger inference
 MOTION_UPPER_FACTOR = 0.8    # Max thresh to ignore Day/Night switching
 FRAME_SKIP = 30              # Number of frames to grab/skip
-LOOP_INTERVAL = 3            # Short sleep to prevent CPU hogging in the main loop
+LOOP_INTERVAL = 2            # Short sleep to prevent CPU hogging in the main loop
+INFERENCE_CONF = 0.06        # confidence parameter of the total inference
+INFERENCE_CONF_PERSON = 0.65 # confidence parameter for "Person"
+INFERENCE_CONF_BIRD = 0.12   # confidence parameter for "Bird"
+INFERENCE_CONF_DOG = 0.4     # confidence parameter for "Dog"
+INFERENCE_CONF_CAT = 0.4     # confidence parameter for "Cat"
 
 # Methods
 def send_telegram_text(text):
@@ -164,12 +169,15 @@ def main():
         # 1. Run inference with a broad confidence threshold (0.2)
         # Targets: Person(0), Bird(14), Cat(15), Dog(16)
         if motion_detected:
-            results = model.predict(roi_frame, conf=0.1, imgsz = 1280, 
-                                classes=[0, 14, 15, 16], verbose=False)
+            results = model.predict(roi_frame, conf=INFERENCE_CONF, imgsz=1280, 
+                                augment=True, classes=[0, 14, 15, 16], verbose=False)
             boxes = results[0].boxes
         
             # 2. Filter detections based on class-specific thresholds
-            thresholds = {0: 0.6, 14: 0.2, 15: 0.4, 16: 0.4}
+            thresholds = {0: INFERENCE_CONF_PERSON, 
+                          14: INFERENCE_CONF_BIRD, 
+                          15: INFERENCE_CONF_CAT, 
+                          16: INFERENCE_CONF_DOG}
             names = {0: "Person", 14: "Bird", 15: "Cat", 16: "Dog"}
 
             if boxes is not None:
