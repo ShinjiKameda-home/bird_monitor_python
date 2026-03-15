@@ -17,14 +17,14 @@ ROI_X1, ROI_Y1 = 768, 0      # The top-left point of the monitoring ROI
 ROI_X2, ROI_Y2 = 2048, 1280  # The bottom-right point of the monitoring ROI
 MIN_SIZE_LARGE_OBJ = 42000   # Persons, Dogs or Cats are large
 MAX_SIZE_SMALL_BIRD = 12800  # Birds are small
-DIFF_THRESHOLD = 30          # Sensitivity, smaller is more sensitive
+DIFF_THRESHOLD = 28          # Sensitivity, smaller is more sensitive
 MOTION_LOWER_LIMIT = 25600   # Minimum pixel sum to trigger inference
 MOTION_UPPER_FACTOR = 0.8    # Max thresh to ignore Day/Night switching
 FRAME_SKIP = 30              # Number of frames to grab/skip
 LOOP_INTERVAL = 2            # Short sleep to prevent CPU hogging in the main loop
-INFERENCE_CONF = 0.06        # confidence parameter of the total inference
+INFERENCE_CONF = 0.08        # confidence parameter of the total inference
 INFERENCE_CONF_PERSON = 0.65 # confidence parameter for "Person"
-INFERENCE_CONF_BIRD = 0.12   # confidence parameter for "Bird"
+INFERENCE_CONF_BIRD = 0.2    # confidence parameter for "Bird"
 INFERENCE_CONF_DOG = 0.4     # confidence parameter for "Dog"
 INFERENCE_CONF_CAT = 0.4     # confidence parameter for "Cat"
 
