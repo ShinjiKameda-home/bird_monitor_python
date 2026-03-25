@@ -3,6 +3,7 @@ import numpy as np
 from ultralytics import YOLO # type: ignore
 import requests # type: ignore
 import os
+import json
 import time
 from dotenv import load_dotenv # type: ignore
 
@@ -21,12 +22,15 @@ DIFF_THRESHOLD = 28          # Sensitivity, smaller is more sensitive
 MOTION_LOWER_LIMIT = 25600   # Minimum pixel sum to trigger inference
 MOTION_UPPER_FACTOR = 0.8    # Max thresh to ignore Day/Night switching
 FRAME_SKIP = 30              # Number of frames to grab/skip
-LOOP_INTERVAL = 2            # Short sleep to prevent CPU hogging in the main loop
-INFERENCE_CONF = 0.08        # confidence parameter of the total inference
-INFERENCE_CONF_PERSON = 0.65 # confidence parameter for "Person"
-INFERENCE_CONF_BIRD = 0.2    # confidence parameter for "Bird"
-INFERENCE_CONF_DOG = 0.4     # confidence parameter for "Dog"
-INFERENCE_CONF_CAT = 0.4     # confidence parameter for "Cat"
+LOOP_INTERVAL = 5            # Short sleep to prevent CPU hogging in the main loop
+INFERENCE_CONF = 0.1         # Confidence parameter of the total inference
+INFERENCE_CONF_PERSON = 0.65 # Confidence parameter for "Person"
+INFERENCE_CONF_BIRD = 0.25   # Confidence parameter for "Bird"
+INFERENCE_CONF_DOG = 0.4     # Confidence parameter for "Dog"
+INFERENCE_CONF_CAT = 0.4     # Confidence parameter for "Cat"
+PERMISSION_FILE = "../permission.json"  # Weather check file from Dr. Wadachi
+PERM_CHECK_INTERVAL = 900               # Weather check interval [sec.]
+SHEEP_COUNTING_INTERVAL = 10            # Weather check interval [sec.] when sleeping
 
 # Methods
 def send_telegram_text(text):
@@ -95,8 +99,39 @@ def main():
         send_telegram_text(start_photo_msg)
         print(start_photo_msg)
 
+    # Initialize resting variables
+    last_perm_check = 0
+    is_allowed = True
+
     # Main monitoring loop: Analyze frames at ~3s intervals
     while cap.isOpened():
+        current_time = time.time()
+        check_interval = PERM_CHECK_INTERVAL if is_allowed else SHEEP_COUNTING_INTERVAL
+        
+        # If is_allowed, nothing will be done before PERM_CHECK_INTERVAL
+        if (current_time - last_perm_check) > check_interval:
+            try:
+                # Check permission after the selected "INTERVAL"
+                with open(PERMISSION_FILE, 'r') as f:
+                    perm = json.load(f)
+                    new_status = perm.get("birdwatching", True)
+                
+                if new_status != is_allowed:
+                    if not new_status:
+                        send_telegram_text(f"High wind ({perm.get('wind_speed')}m/s). \n BirdWatcher is going to sleep (Zzz...)")
+                    else:
+                        send_telegram_text("Wind calmed down. \n BirdWatcher is waking up!")
+                
+                is_allowed = new_status
+                last_perm_check = current_time
+            except Exception as e:
+                last_perm_check = current_time - (check_interval - 5)
+
+        # If not is_allowed, count sheep and get back to the top of this loop
+        if not is_allowed:
+            time.sleep(SHEEP_COUNTING_INTERVAL)
+            continue
+
         found_labels = set()
         boxes = None
 
