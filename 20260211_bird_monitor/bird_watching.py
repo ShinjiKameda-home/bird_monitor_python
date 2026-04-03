@@ -126,10 +126,12 @@ def main():
                 last_perm_check = current_time
             except Exception as e:
                 last_perm_check = current_time - (check_interval - 5)
+                time.sleep(SHEEP_COUNTING_INTERVAL)
 
         # If not is_allowed, count sheep and get back to the top of this loop
         if not is_allowed:
             time.sleep(SHEEP_COUNTING_INTERVAL)
+            last_perm_check = 0
             continue
 
         found_labels = set()
