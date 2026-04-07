@@ -41,7 +41,7 @@ def send_telegram_text(text):
         "text": text
     }
     try:
-        response = requests.post(url, data=payload)
+        response = requests.post(url, data=payload, timeout=10)
         # Print results into the terminal
         if response.status_code == 200:
             print("Telegram notification sent successfully!")
@@ -65,12 +65,13 @@ def main():
     # Inistialize before the loop
     prev_roi_gray = None
     detected_previously = False
-
     model = YOLO("yolov8n.pt")
     cap = cv2.VideoCapture(RTSP_URL)
+    print("Waiting for Dr. Wadachi to prepare the status report...")
+    time.sleep(10)
 
     # Initial system check: Send startup notification
-    start_msg = "Mission Start: Monitoring the garden..."
+    start_msg = "Mission Start: Monitoring the Garden..."
     send_telegram_text(start_msg)
     print(start_msg)
     
