@@ -4,6 +4,7 @@ from ultralytics import YOLO # type: ignore
 import requests # type: ignore
 import os
 import json
+from multiprocessing import shared_memory # type: ignore
 import time
 from dotenv import load_dotenv # type: ignore
 
@@ -13,7 +14,7 @@ TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 RTSP_URL = os.getenv("RTSP_URL") or ""
 
-# Constants
+# Static Constants
 ROI_X1, ROI_Y1 = 768, 0      # The top-left point of the monitoring ROI
 ROI_X2, ROI_Y2 = 2048, 1280  # The bottom-right point of the monitoring ROI
 MIN_SIZE_LARGE_OBJ = 42000   # Persons, Dogs or Cats are large
@@ -31,10 +32,29 @@ INFERENCE_CONF_CAT = 0.4     # Confidence parameter for "Cat"
 PERMISSION_FILE = "../permission.json"  # Weather check file from Dr. Wadachi
 PERM_CHECK_INTERVAL = 900               # Weather check interval [sec.]
 SHEEP_COUNTING_INTERVAL = 10            # Weather check interval [sec.] when sleeping
+SHM_NAME = "garden_person_presence"     # Shared memory name for person presence flag
 
-# Methods
+# Global Variables
+shm = None  # Shared memory object, initialized in main()
+
+def connect_to_shm():
+    """Connect to the existing shared memory created by Weather Forecast, with retry logic."""
+    global shm
+    while True:
+        try:
+            # Attempt to connect to the existing shared memory created by Weather Forecast
+            shm = shared_memory.SharedMemory(name=SHM_NAME)
+        except FileNotFoundError:
+            print("Waiting for Weather Forecast to create shared memory...")
+            time.sleep(1)
+
+def update_presence(shm_obj, is_present):
+    """Rewrite the zero-th byte of shared memory to indicate presence (1 for present, 0 for not present)"""
+    if shm_obj is not None and shm_obj.buf is not None:
+        shm_obj.buf[0] = 1 if is_present else 0
+
 def send_telegram_text(text):
-    """Sends a plain text message via Telegram Bot API."""
+    """Send a plain text message via Telegram Bot API."""
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {
         "chat_id": CHAT_ID,
@@ -51,7 +71,7 @@ def send_telegram_text(text):
         print(f"Notification Error: {e}")
 
 def send_telegram_photo(photo_path, caption):
-    """Sends a photo with a caption via Telegram Bot API."""
+    """Send a photo with a caption via Telegram Bot API."""
     url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
     with open(photo_path, 'rb') as photo:
         payload = {"chat_id": CHAT_ID, "caption": caption}
@@ -68,9 +88,14 @@ def main():
     model = YOLO("yolov8n.pt")
     cap = cv2.VideoCapture(RTSP_URL)
     print("Waiting for Dr. Wadachi to prepare the status report...")
-    time.sleep(10)
+    time.sleep(2)
 
-    # Initial system check: Send startup notification
+    # Connect to global shared memory for person presence flag
+    connect_to_shm()
+    # update_presence(shm, False) # Set presence to False at startup (safety first)
+    update_presence(shm, False) # Set presence to False at startup (safety first)
+
+    # Send startup notification
     start_msg = "Mission Start: Monitoring the Garden..."
     send_telegram_text(start_msg)
     print(start_msg)
@@ -264,6 +289,12 @@ def main():
             send_telegram_photo(photo_path, msg)
             print(msg)
             
+            # Update shared memory to indicate presence (1 for present)
+            if "Person" in found_labels or "Cat" in found_labels:
+                if shm is not None and shm.buf is not None:
+                    if not bool(shm.buf[0]):
+                        update_presence(shm, True)  # Set presence to True 
+
             detected_previously = True
         
         elif not has_valid_target:
