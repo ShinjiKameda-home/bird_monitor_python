@@ -90,11 +90,6 @@ def main():
     print("Waiting for Dr. Wadachi to prepare the status report...")
     time.sleep(2)
 
-    # Connect to global shared memory for person presence flag
-    connect_to_shm()
-    # update_presence(shm, False) # Set presence to False at startup (safety first)
-    update_presence(shm, False) # Set presence to False at startup (safety first)
-
     # Send startup notification
     start_msg = "Mission Start: Monitoring the Garden..."
     send_telegram_text(start_msg)
@@ -128,6 +123,11 @@ def main():
     # Initialize resting variables
     last_perm_check = 0
     is_allowed = True
+
+    # Connect to global shared memory for person presence flag
+    connect_to_shm()
+    # update_presence(shm, False) # Set presence to False at startup (safety first)
+    update_presence(shm, False) # Set presence to False at startup (safety first)
 
     # Main monitoring loop: Analyze frames at ~3s intervals
     while cap.isOpened():
