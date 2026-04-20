@@ -32,7 +32,7 @@ INFERENCE_CONF_CAT = 0.4     # Confidence parameter for "Cat"
 PERMISSION_FILE = "../permission.json"  # Weather check file from Dr. Wadachi
 PERM_CHECK_INTERVAL = 900               # Weather check interval [sec.]
 SHEEP_COUNTING_INTERVAL = 10            # Weather check interval [sec.] when sleeping
-SHM_NAME = "garden_person_presence"     # Shared memory name for person presence flag
+SHM_NAME = "memories_of_haniwa_garden"  # Shared memory name for presence flag (1 byte, 0 or 1), and decision
 
 # Global Variables
 shm = None  # Shared memory object, initialized in main()
@@ -44,9 +44,10 @@ def connect_to_shm():
         try:
             # Attempt to connect to the existing shared memory created by Weather Forecast
             shm = shared_memory.SharedMemory(name=SHM_NAME)
+            break  # Successfully connected, exit the loop
         except FileNotFoundError:
             print("Waiting for Weather Forecast to create shared memory...")
-            time.sleep(1)
+            time.sleep(2)  # Wait before retrying
 
 def update_presence(shm_obj, is_present):
     """Rewrite the zero-th byte of shared memory to indicate presence (1 for present, 0 for not present)"""
@@ -87,8 +88,10 @@ def main():
     detected_previously = False
     model = YOLO("yolov8n.pt")
     cap = cv2.VideoCapture(RTSP_URL)
-    print("Waiting for Dr. Wadachi to prepare the status report...")
-    time.sleep(2)
+    # Connect to global shared memory for person presence flag
+    connect_to_shm() # This will wait weather_forecast.service will be running successfully.
+    update_presence(shm, False) # Initialize Person presence to False.    
+    send_telegram_text("Hello DrWadachi! BirdWatcher is ready to detect Persons.")
 
     # Send startup notification
     start_msg = "Mission Start: Monitoring the Garden..."
@@ -124,11 +127,6 @@ def main():
     last_perm_check = 0
     is_allowed = True
 
-    # Connect to global shared memory for person presence flag
-    connect_to_shm()
-    # update_presence(shm, False) # Set presence to False at startup (safety first)
-    update_presence(shm, False) # Set presence to False at startup (safety first)
-
     # Main monitoring loop: Analyze frames at ~3s intervals
     while cap.isOpened():
         current_time = time.time()
@@ -140,14 +138,12 @@ def main():
                 # Check permission after the selected "INTERVAL"
                 with open(PERMISSION_FILE, 'r') as f:
                     perm = json.load(f)
-                    new_status = perm.get("birdwatching", True)
-                
+                    new_status = perm.get("birdwatching", True)                
                 if new_status != is_allowed:
                     if not new_status:
                         send_telegram_text(f"High wind ({perm.get('wind_speed')}m/s). \n BirdWatcher is going to sleep (Zzz...)")
                     else:
-                        send_telegram_text("Wind calmed down. \n BirdWatcher is waking up!")
-                
+                        send_telegram_text("Wind calmed down. \n BirdWatcher is waking up!")                
                 is_allowed = new_status
                 last_perm_check = current_time
             except Exception as e:
@@ -295,6 +291,9 @@ def main():
                     if not bool(shm.buf[0]):
                         update_presence(shm, True)  # Set presence to True 
 
+            # Prevent repeated notifications until the target leaves the frame
+            for _ in range(15): # 15s of buffer time to avoid rapid notifications
+                time.sleep(1)
             detected_previously = True
         
         elif not has_valid_target:
