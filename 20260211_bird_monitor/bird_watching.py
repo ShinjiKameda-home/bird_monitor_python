@@ -23,7 +23,7 @@ DIFF_THRESHOLD = 28          # Sensitivity, smaller is more sensitive
 MOTION_LOWER_LIMIT = 25600   # Minimum pixel sum to trigger inference
 MOTION_UPPER_FACTOR = 0.8    # Max thresh to ignore Day/Night switching
 FRAME_SKIP = 30              # Number of frames to grab/skip
-LOOP_INTERVAL = 5            # Short sleep to prevent CPU hogging in the main loop
+LOOP_INTERVAL = 1            # Short sleep to prevent CPU hogging in the main loop
 INFERENCE_CONF = 0.1         # Confidence parameter of the total inference
 INFERENCE_CONF_PERSON = 0.65 # Confidence parameter for "Person"
 INFERENCE_CONF_BIRD = 0.25   # Confidence parameter for "Bird"
@@ -33,6 +33,7 @@ PERMISSION_FILE = "../permission.json"  # Weather check file from Dr. Wadachi
 PERM_CHECK_INTERVAL = 900               # Weather check interval [sec.]
 SHEEP_COUNTING_INTERVAL = 10            # Weather check interval [sec.] when sleeping
 SHM_NAME = "memories_of_haniwa_garden"  # Shared memory name for presence flag (1 byte, 0 or 1), and decision
+NOTIFICATION_COOLDOWN = 30         # Cooldown period for notifications [sec.]
 
 # Global Variables
 shm = None  # Shared memory object, initialized in main()
@@ -85,9 +86,17 @@ def send_telegram_photo(photo_path, caption):
 def main():
     # Inistialize before the loop
     prev_roi_gray = None
-    detected_previously = False
+    last_notification_time = 0
     model = YOLO("yolov8n.pt")
     cap = cv2.VideoCapture(RTSP_URL)
+    # Print camera stream settings for debugging
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+    print(f"--- Camera Stream Settings ---")
+    print(f"FPS: {fps}")
+    print(f"Resolution: {int(width)}x{int(height)}")
+    print(f"------------------------------")
     # Connect to global shared memory for person presence flag
     connect_to_shm() # This will wait weather_forecast.service will be running successfully.
     update_presence(shm, False) # Initialize Person presence to False.    
@@ -99,7 +108,8 @@ def main():
     print(start_msg)
     
     # Verify RTSP stream by capturing an initial frame
-    cap.grab()
+    for _ in range(FRAME_SKIP):
+        cap.grab()
     ret, frame = cap.retrieve()
     if ret:
         preview_frame = frame.copy()
@@ -127,8 +137,10 @@ def main():
     last_perm_check = 0
     is_allowed = True
 
-    # Main monitoring loop: Analyze frames at ~3s intervals
+    # Main monitoring loop
     while cap.isOpened():
+        for _ in range(FRAME_SKIP):
+            cap.grab()
         current_time = time.time()
         check_interval = PERM_CHECK_INTERVAL if is_allowed else SHEEP_COUNTING_INTERVAL
         
@@ -156,16 +168,13 @@ def main():
             last_perm_check = 0
             continue
 
+        # If cooldown is active, skip detection and wait for the next loop
+        if (current_time - last_notification_time) < NOTIFICATION_COOLDOWN:
+            time.sleep(LOOP_INTERVAL)
+            continue
+
         found_labels = set()
         boxes = None
-
-        # Skip ~1s of frames to stay current with the live stream
-        for _ in range(FRAME_SKIP):
-            cap.grab()
-            
-        # Decode the latest frame before revision
-        # ret, frame = cap.retrieve()
-        # if not ret: break
 
         # Happy Path: Decode the latest frame
         ret, frame = cap.retrieve()
@@ -189,7 +198,7 @@ def main():
                 time.sleep(9)  # Count to 10
 
                 # Grab a few times to refresh buffer
-                for _ in range(5):
+                for _ in range(FRAME_SKIP):
                     cap.grab()
                 
                 ret, frame = cap.retrieve()
@@ -225,17 +234,34 @@ def main():
         # Update for the next loop
         prev_roi_gray = current_roi_gray.copy()
 
-        # 1. Run inference with a broad confidence threshold (0.2)
-        # Targets: Person(0), Bird(14), Cat(15), Dog(16)
+        # 1. Run a fast person-only inference immediately in the ROI.
+        # This avoids waiting for motion before detecting persons.
+        person_results = model.predict(roi_frame, conf=INFERENCE_CONF_PERSON, imgsz=640,
+                                      classes=[0], verbose=False)
+        if person_results and person_results[0].boxes is not None:
+            for box in person_results[0].boxes:
+                conf = float(box.conf[0])
+                if conf < INFERENCE_CONF_PERSON:
+                    continue
+                coords = box.xyxy[0].tolist()
+                b_x1, b_y1, b_x2, b_y2 = map(int, coords)
+                area = (b_x2 - b_x1) * (b_y2 - b_y1)
+                if area < MIN_SIZE_LARGE_OBJ:
+                    continue
+                gx1, gy1 = b_x1 + ROI_X1, b_y1 + ROI_Y1
+                gx2, gy2 = b_x2 + ROI_X1, b_y2 + ROI_Y1
+                cv2.rectangle(frame, (gx1, gy1), (gx2, gy2), (0, 0, 255), 3)
+                found_labels.add("Person")
+
+        # 2. If motion is detected, run a broader inference for birds / other objects.
         if motion_detected:
-            results = model.predict(roi_frame, conf=INFERENCE_CONF, imgsz=1280, 
+            results = model.predict(roi_frame, conf=INFERENCE_CONF, imgsz=1280,
                                 augment=True, classes=[0, 14, 15, 16], verbose=False)
             boxes = results[0].boxes
-        
-            # 2. Filter detections based on class-specific thresholds
-            thresholds = {0: INFERENCE_CONF_PERSON, 
-                          14: INFERENCE_CONF_BIRD, 
-                          15: INFERENCE_CONF_CAT, 
+
+            thresholds = {0: INFERENCE_CONF_PERSON,
+                          14: INFERENCE_CONF_BIRD,
+                          15: INFERENCE_CONF_CAT,
                           16: INFERENCE_CONF_DOG}
             names = {0: "Person", 14: "Bird", 15: "Cat", 16: "Dog"}
 
@@ -245,16 +271,12 @@ def main():
                     conf = float(box.conf[0])
                     coords = box.xyxy[0].tolist()     # float coordinates
                     b_x1, b_y1, b_x2, b_y2 = map(int, coords) # integer coordinates
-                    # Calculate bounding box area in pixels
                     area = (b_x2 - b_x1) * (b_y2 - b_y1)
-                    # Convert coordinates from relative to global
                     gx1, gy1 = b_x1 + ROI_X1, b_y1 + ROI_Y1
                     gx2, gy2 = b_x2 + ROI_X1, b_y2 + ROI_Y1
-                    # Get specific threshold for this class, defaulting to 0.5
                     target_threshold = thresholds.get(cls_id, 0.5)
                     if conf < target_threshold:
                         continue
-                    # Map class ID to label name, with "Unknown" as a safety fallback
                     label_name = names.get(cls_id, "Unknown")
                     # -1. Filter out undersized 'Large' objects (e.g., wind-blown pots) ---
                     if label_name in ["Person", "Dog", "Cat"]:
@@ -274,33 +296,18 @@ def main():
         # 3. Handle notifications based on detection state changes
         has_valid_target = len(found_labels) > 0
 
-        if has_valid_target and not detected_previously:
-            # Format message and save captured frame
+        if has_valid_target:
             labels_str = ", ".join(found_labels)
-            msg = f"Target confirmed: {labels_str} in the garden!"            
+            msg = f"Target confirmed: {labels_str} in the garden!"
             photo_path = "detected_photo.jpg"
             cv2.imwrite(photo_path, frame)
             
-            # Send notification and log to console
-            send_telegram_photo(photo_path, msg)
-            print(msg)
-            
             # Update shared memory to indicate presence (1 for present)
             if "Person" in found_labels or "Cat" in found_labels:
-                if shm is not None and shm.buf is not None:
-                    if not bool(shm.buf[0]):
-                        update_presence(shm, True)  # Set presence to True 
-
-            # Prevent repeated notifications until the target leaves the frame
-            for _ in range(15): # 15s of buffer time to avoid rapid notifications
-                time.sleep(1)
-            detected_previously = True
+                last_notification_time = current_time
+                update_presence(shm, True)
         
-        elif not has_valid_target:
-            # Reset detection flag when targets leave the frame
-            detected_previously = False
-        
-        time.sleep(max (0, LOOP_INTERVAL-1))
+        time.sleep(LOOP_INTERVAL)
 
     cap.release()
 
