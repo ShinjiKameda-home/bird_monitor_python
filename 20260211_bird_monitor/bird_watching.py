@@ -33,7 +33,7 @@ PERMISSION_FILE = "../permission.json"  # Weather check file from Dr. Wadachi
 PERM_CHECK_INTERVAL = 900               # Weather check interval [sec.]
 SHEEP_COUNTING_INTERVAL = 10            # Weather check interval [sec.] when sleeping
 SHM_NAME = "memories_of_haniwa_garden"  # Shared memory name for presence flag (1 byte, 0 or 1), and decision
-NOTIFICATION_COOLDOWN = 30         # Cooldown period for notifications [sec.]
+NOTIFICATION_COOLDOWN = 300         # Cooldown period for notifications [sec.]
 
 # Global Variables
 shm = None  # Shared memory object, initialized in main()
@@ -100,6 +100,7 @@ def main():
     # Connect to global shared memory for person presence flag
     connect_to_shm() # This will wait weather_forecast.service will be running successfully.
     update_presence(shm, False) # Initialize Person presence to False.    
+    was_target_present = False
     send_telegram_text("Hello DrWadachi! BirdWatcher is ready to detect Persons.")
 
     # Send startup notification
@@ -296,16 +297,26 @@ def main():
         # 3. Handle notifications based on detection state changes
         has_valid_target = len(found_labels) > 0
 
+        is_target_present_now = "Person" in found_labels or "Cat" in found_labels
+
         if has_valid_target:
             labels_str = ", ".join(found_labels)
             msg = f"Target confirmed: {labels_str} in the garden!"
             photo_path = "detected_photo.jpg"
             cv2.imwrite(photo_path, frame)
+            send_telegram_photo(photo_path, msg)
+            last_notification_time = current_time            
             
-            # Update shared memory to indicate presence (1 for present)
-            if "Person" in found_labels or "Cat" in found_labels:
-                last_notification_time = current_time
-                update_presence(shm, True)
+        # Update shared memory to indicate presence (1 for present)
+        if is_target_present_now and not was_target_present:
+            update_presence(shm, True)
+            was_target_present = True
+            print("Person/Cat detected. Updated shared memory presence flag to True.")
+            
+        elif not is_target_present_now and was_target_present:
+            update_presence(shm, False)
+            was_target_present = False
+            print("Person/Cat left. Updated shared memory presence flag to False.")
         
         time.sleep(LOOP_INTERVAL)
 
